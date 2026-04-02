@@ -1274,6 +1274,35 @@ struct HomeScreen: View {
                             .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        
+                        // Manage Territories Button
+                        NavigationLink(destination: ManageTerritoriesView(authManager: authManager)) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "slider.horizontal.3")
+                                            .font(.title)
+                                        Text("Manage Territories")
+                                            .font(.title2)
+                                            .fontWeight(.semibold)
+                                    }
+                                    Text("Organize and configure territories")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(24)
+                            .background(Color(uiColor: .systemBackground))
+                            .cornerRadius(16)
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal, 30)
                     
@@ -1292,6 +1321,952 @@ struct HomeScreen: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Territory Entity Model
+
+struct Territory: Codable, Identifiable {
+    let id: String
+    let name: String?
+    let isReady: Bool?
+    let assignedToName: String?
+    let assignedToSurname: String?
+    let assignedUnregisteredUser: String?
+    let lastTimeWorked: String?
+    let link: String?
+    let siteName: String?
+    let totalCount: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "ID"
+        case name
+        case isReady
+        case assignedToName
+        case assignedToSurname
+        case assignedUnregisteredUser
+        case lastTimeWorked
+        case link
+        case siteName
+        case totalCount
+    }
+    
+    var formattedLastTimeWorked: String {
+        guard let dateString = lastTimeWorked, !dateString.isEmpty else {
+            return "Never"
+        }
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "MMM dd, yyyy"
+            return displayFormatter.string(from: date)
+        }
+        // Try without fractional seconds
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        if let date = isoFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "MMM dd, yyyy"
+            return displayFormatter.string(from: date)
+        }
+        // Try date-only format (yyyy-MM-dd)
+        let dateOnlyFormatter = DateFormatter()
+        dateOnlyFormatter.dateFormat = "yyyy-MM-dd"
+        if let date = dateOnlyFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "MMM dd, yyyy"
+            return displayFormatter.string(from: date)
+        }
+        return dateString
+    }
+    
+    var assignedToDisplayName: String {
+        if let first = assignedToName, let last = assignedToSurname, !first.isEmpty || !last.isEmpty {
+            return [first, last].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+        }
+        if let unregistered = assignedUnregisteredUser, !unregistered.isEmpty {
+            return unregistered
+        }
+        return "Unassigned"
+    }
+}
+
+// MARK: - Territory Detail Model
+
+struct TerritoryDetail: Codable, Identifiable {
+    let id: String
+    let name: String?
+    let isReady: Bool?
+    let assignedToName: String?
+    let assignedToSurname: String?
+    let assignedUnregisteredUser: String?
+    let assignedUnregisteredUserAssignmentId: String?
+    let lastTimeWorked: String?
+    let link: String?
+    let totalCount: Int?
+    let toBoundaryPart: TerritoryBoundaryPart?
+    let toParts: [TerritoryPart]?
+    let toAllowedUsers: [AllowedUser]?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "ID"
+        case name
+        case isReady
+        case assignedToName
+        case assignedToSurname
+        case assignedUnregisteredUser
+        case assignedUnregisteredUserAssignmentId
+        case lastTimeWorked
+        case link
+        case totalCount
+        case toBoundaryPart
+        case toParts
+        case toAllowedUsers
+    }
+    
+    var assignedToDisplayName: String {
+        if let first = assignedToName, let last = assignedToSurname, !first.isEmpty || !last.isEmpty {
+            return [first, last].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+        }
+        if let unregistered = assignedUnregisteredUser, !unregistered.isEmpty {
+            return unregistered
+        }
+        return "Unassigned"
+    }
+    
+    var formattedLastTimeWorked: String {
+        guard let dateString = lastTimeWorked, !dateString.isEmpty else {
+            return "Never"
+        }
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "MMM dd, yyyy"
+            return displayFormatter.string(from: date)
+        }
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        if let date = isoFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "MMM dd, yyyy"
+            return displayFormatter.string(from: date)
+        }
+        let dateOnlyFormatter = DateFormatter()
+        dateOnlyFormatter.dateFormat = "yyyy-MM-dd"
+        if let date = dateOnlyFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "MMM dd, yyyy"
+            return displayFormatter.string(from: date)
+        }
+        return dateString
+    }
+}
+
+struct TerritoryBoundaryPart: Codable, Identifiable {
+    let id: String
+    let coordinates: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "ID"
+        case coordinates
+    }
+}
+
+struct TerritoryPart: Codable, Identifiable {
+    let id: String
+    let name: String?
+    let coordinates: String?
+    let count: Int?
+    let isBoundaries: Bool?
+    let toParent: TerritoryPartParent?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "ID"
+        case name
+        case coordinates
+        case count
+        case isBoundaries
+        case toParent
+    }
+}
+
+struct TerritoryPartParent: Codable, Identifiable {
+    let id: String
+    let toBoundaryPart: TerritoryBoundaryPart?
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "ID"
+        case toBoundaryPart
+    }
+}
+
+// MARK: - Territory Manage Detail Manager
+
+@MainActor
+class TerritoryManageDetailManager: ObservableObject {
+    @Published var territory: TerritoryDetail?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    
+    private let odataService: ODataService
+    
+    init(odataService: ODataService) {
+        self.odataService = odataService
+    }
+    
+    func loadTerritory(id: String) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let response: ODataResponse<TerritoryDetail> = try await odataService.query(
+                entitySet: "Territories",
+                filter: "ID eq \(id)",
+                select: ["ID", "assignedToName", "assignedToSurname", "assignedUnregisteredUser", "assignedUnregisteredUserAssignmentId", "isReady", "lastTimeWorked", "link", "name", "totalCount"],
+                expand: ["toBoundaryPart($select=ID,coordinates)", "toParts($orderby=name;$select=ID,coordinates,count,isBoundaries,name;$expand=toParent($select=ID;$expand=toBoundaryPart($select=ID,coordinates)))", "toAllowedUsers($orderby=surname;$select=name,surname,tenant_ID,user_ID)"],
+                top: 1
+            )
+            
+            territory = response.value.first
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Error loading territory detail: \(error)")
+        }
+        
+        isLoading = false
+    }
+    
+    func refresh(id: String) async {
+        await loadTerritory(id: id)
+    }
+    
+    func assignToUser(territoryId: String, userId: String) async throws {
+        guard let token = odataService.authManager.accessToken else {
+            throw ODataError.unauthorized
+        }
+        
+        let baseURL = "https://my-territory.app/odata/v4/srv.searching"
+        let urlString = "\(baseURL)/Territories(\(territoryId))/srv.searching.assignToUser"
+        
+        guard let url = URL(string: urlString) else {
+            throw ODataError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let parameters = ["userId": userId]
+        request.httpBody = try JSONEncoder().encode(parameters)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ODataError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ODataError.requestFailed(statusCode: httpResponse.statusCode)
+        }
+        
+        // Refresh the data
+        await loadTerritory(id: territoryId)
+    }
+    
+    func withdrawFromUser(territoryId: String) async throws {
+        guard let token = odataService.authManager.accessToken else {
+            throw ODataError.unauthorized
+        }
+        
+        let baseURL = "https://my-territory.app/odata/v4/srv.searching"
+        let urlString = "\(baseURL)/Territories(\(territoryId))/srv.searching.withdrawFromUser"
+        
+        guard let url = URL(string: urlString) else {
+            throw ODataError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ODataError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ODataError.requestFailed(statusCode: httpResponse.statusCode)
+        }
+        
+        // Refresh the data
+        await loadTerritory(id: territoryId)
+    }
+}
+
+// MARK: - Manage Territory Manager
+
+enum TerritoryAssignmentFilter: String, CaseIterable {
+    case all = "All"
+    case assigned = "Assigned"
+    case available = "Available"
+}
+
+@MainActor
+class ManageTerritoryManager: ObservableObject {
+    @Published var territories: [Territory] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var totalCount: Int = 0
+    
+    private let odataService: ODataService
+    private var currentPage = 0
+    private let pageSize = 20
+    private var currentSearchText = ""
+    private var currentFilter: TerritoryAssignmentFilter = .all
+    
+    init(odataService: ODataService) {
+        self.odataService = odataService
+    }
+    
+    private func buildFilter(searchText: String, assignmentFilter: TerritoryAssignmentFilter) -> String? {
+        var filters: [String] = []
+        
+        if !searchText.isEmpty {
+            let escaped = searchText.replacingOccurrences(of: "'", with: "''")
+            filters.append("(contains(tolower(name),tolower('\(escaped)')) or contains(tolower(assignedToName),tolower('\(escaped)')) or contains(tolower(assignedToSurname),tolower('\(escaped)')) or contains(tolower(assignedUnregisteredUser),tolower('\(escaped)')))")
+        }
+        
+        switch assignmentFilter {
+        case .assigned:
+            filters.append("(assignedToName ne null or assignedUnregisteredUser ne null)")
+        case .available:
+            filters.append("assignedToName eq null and assignedUnregisteredUser eq null")
+        case .all:
+            break
+        }
+        
+        return filters.isEmpty ? nil : filters.joined(separator: " and ")
+    }
+    
+    func loadTerritories(page: Int = 0, searchText: String = "", assignmentFilter: TerritoryAssignmentFilter = .all) async {
+        isLoading = true
+        errorMessage = nil
+        currentPage = page
+        currentSearchText = searchText
+        currentFilter = assignmentFilter
+        
+        do {
+            let response: ODataResponse<Territory> = try await odataService.query(
+                entitySet: "Territories",
+                filter: buildFilter(searchText: searchText, assignmentFilter: assignmentFilter),
+                select: ["ID", "assignedToName", "assignedToSurname", "assignedUnregisteredUser", "isReady", "lastTimeWorked", "link", "name", "siteName", "totalCount"],
+                top: pageSize,
+                skip: page * pageSize
+            )
+            
+            if page == 0 {
+                territories = response.value
+            } else {
+                territories.append(contentsOf: response.value)
+            }
+            totalCount = response.count ?? 0
+        } catch {
+            errorMessage = error.localizedDescription
+            print("Error loading territories: \(error)")
+        }
+        
+        isLoading = false
+    }
+    
+    func loadNextPage() async {
+        guard !isLoading, territories.count < totalCount else { return }
+        await loadTerritories(page: currentPage + 1, searchText: currentSearchText, assignmentFilter: currentFilter)
+    }
+    
+    func refresh() async {
+        await loadTerritories(page: 0, searchText: currentSearchText, assignmentFilter: currentFilter)
+    }
+}
+
+// MARK: - Manage Territories View
+
+struct ManageTerritoriesView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @StateObject private var manager: ManageTerritoryManager
+    @State private var searchText = ""
+    @State private var assignmentFilter: TerritoryAssignmentFilter = .all
+    @State private var searchTask: Task<Void, Never>?
+    
+    init(authManager: AuthManager) {
+        let odataService = ODataService(authManager: authManager)
+        _manager = StateObject(wrappedValue: ManageTerritoryManager(odataService: odataService))
+    }
+    
+    var body: some View {
+        Group {
+            if manager.isLoading && manager.territories.isEmpty {
+                VStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            } else if let errorMessage = manager.errorMessage, manager.territories.isEmpty {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundStyle(.red)
+                        Text("Error Loading Territories")
+                            .font(.headline)
+                        Text(errorMessage)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Try Again") {
+                            Task {
+                                await manager.loadTerritories(searchText: searchText, assignmentFilter: assignmentFilter)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else if manager.territories.isEmpty {
+                ContentUnavailableView(
+                    "No Territories",
+                    systemImage: "map",
+                    description: Text("No territories match your filters.")
+                )
+            } else {
+                List {
+                    ForEach(manager.territories) { territory in
+                        NavigationLink(destination: TerritoryManageDetailView(territory: territory, authManager: authManager)) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(territory.name ?? "Unnamed")
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                    Text(territory.assignedToDisplayName)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "clock")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                        Text(territory.formattedLastTimeWorked)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                if territory.isReady == true {
+                                    Text("Ready")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.green)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(.green.opacity(0.12))
+                                        .cornerRadius(6)
+                                } else {
+                                    Text("Not Ready")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.orange)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(.orange.opacity(0.12))
+                                        .cornerRadius(6)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    
+                    if manager.territories.count < manager.totalCount {
+                        HStack {
+                            Spacer()
+                            if manager.isLoading {
+                                ProgressView()
+                            } else {
+                                Button("Load More") {
+                                    Task {
+                                        await manager.loadNextPage()
+                                    }
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Manage Territories")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, prompt: "Search by name or assigned person")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Filter", selection: $assignmentFilter) {
+                        ForEach(TerritoryAssignmentFilter.allCases, id: \.self) { filter in
+                            Text(filter.rawValue).tag(filter)
+                        }
+                    }
+                } label: {
+                    Label("Filter", systemImage: assignmentFilter == .all ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                }
+            }
+        }
+        .onChange(of: searchText) {
+            searchTask?.cancel()
+            searchTask = Task {
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                guard !Task.isCancelled else { return }
+                await manager.loadTerritories(searchText: searchText, assignmentFilter: assignmentFilter)
+            }
+        }
+        .onChange(of: assignmentFilter) {
+            Task {
+                await manager.loadTerritories(searchText: searchText, assignmentFilter: assignmentFilter)
+            }
+        }
+        .refreshable {
+            await manager.loadTerritories(searchText: searchText, assignmentFilter: assignmentFilter)
+        }
+        .task {
+            await manager.loadTerritories()
+        }
+    }
+}
+
+// MARK: - Territory Manage Detail View
+
+struct TerritoryManageDetailView: View {
+    let territoryId: String
+    @EnvironmentObject var authManager: AuthManager
+    @StateObject private var detailManager: TerritoryManageDetailManager
+    @State private var selectedTab = 0
+    @State private var showAssignSheet = false
+    @State private var showWithdrawConfirmation = false
+    @State private var isProcessing = false
+    @State private var showError = false
+    @State private var actionErrorMessage = ""
+    
+    init(territory: Territory, authManager: AuthManager) {
+        self.territoryId = territory.id
+        let odataService = ODataService(authManager: authManager)
+        _detailManager = StateObject(wrappedValue: TerritoryManageDetailManager(odataService: odataService))
+    }
+    
+    var body: some View {
+        Group {
+            if detailManager.isLoading && detailManager.territory == nil {
+                VStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            } else if let errorMessage = detailManager.errorMessage, detailManager.territory == nil {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundStyle(.red)
+                        Text("Error Loading Territory")
+                            .font(.headline)
+                        Text(errorMessage)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Try Again") {
+                            Task {
+                                await detailManager.loadTerritory(id: territoryId)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else if let territory = detailManager.territory {
+                VStack(spacing: 0) {
+                    // Icon Tab Bar
+                    HStack(spacing: 0) {
+                        manageTabButton(title: "General Info", icon: "info.circle", tag: 0)
+                        manageTabButton(title: "Map", icon: "map", tag: 1)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    Divider()
+                    
+                    // Tab Content
+                    TabView(selection: $selectedTab) {
+                        generalInfoTab(territory: territory)
+                            .tag(0)
+                        
+                        mapTab(territory: territory)
+                            .tag(1)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                }
+            } else {
+                ContentUnavailableView(
+                    "No Data",
+                    systemImage: "doc",
+                    description: Text("Territory data could not be loaded.")
+                )
+            }
+        }
+        .navigationTitle(detailManager.territory?.name ?? "Territory")
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await detailManager.refresh(id: territoryId)
+        }
+        .task {
+            await detailManager.loadTerritory(id: territoryId)
+        }
+        .sheet(isPresented: $showAssignSheet) {
+            if let territory = detailManager.territory {
+                UserSelectionSheet(
+                    allowedUsers: territory.toAllowedUsers ?? [],
+                    onSelect: { user in
+                        showAssignSheet = false
+                        Task {
+                            await assignToUser(userId: user.id)
+                        }
+                    }
+                )
+            }
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(actionErrorMessage)
+        }
+        .alert("Withdraw Territory", isPresented: $showWithdrawConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Withdraw", role: .destructive) {
+                Task {
+                    await withdrawFromUser()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to withdraw this territory from the current user?")
+        }
+    }
+    
+    // MARK: - Actions
+    
+    private func assignToUser(userId: String) async {
+        isProcessing = true
+        do {
+            try await detailManager.assignToUser(territoryId: territoryId, userId: userId)
+        } catch {
+            actionErrorMessage = error.localizedDescription
+            showError = true
+        }
+        isProcessing = false
+    }
+    
+    private func withdrawFromUser() async {
+        isProcessing = true
+        do {
+            try await detailManager.withdrawFromUser(territoryId: territoryId)
+        } catch {
+            actionErrorMessage = error.localizedDescription
+            showError = true
+        }
+        isProcessing = false
+    }
+    
+    // MARK: - Tab Button
+    
+    private func manageTabButton(title: String, icon: String, tag: Int) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedTab = tag
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .stroke(selectedTab == tag ? Color.blue : Color.secondary.opacity(0.3), lineWidth: 2)
+                    )
+                    .foregroundStyle(selectedTab == tag ? .blue : .secondary)
+                
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(selectedTab == tag ? .semibold : .regular)
+                    .foregroundStyle(selectedTab == tag ? .blue : .secondary)
+                
+                Rectangle()
+                    .fill(selectedTab == tag ? Color.blue : Color.clear)
+                    .frame(height: 2)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: - General Info Tab
+    
+    private func generalInfoTab(territory: TerritoryDetail) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Header Card
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(territory.name ?? "Unnamed")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    
+                    if territory.isReady == true {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            Text("Ready")
+                                .fontWeight(.medium)
+                                .foregroundStyle(.green)
+                        }
+                    } else {
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock.fill")
+                                .foregroundStyle(.orange)
+                            Text("Not Ready")
+                                .fontWeight(.medium)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    
+                    if let link = territory.link, let url = URL(string: link) {
+                        Link(destination: url) {
+                            HStack {
+                                Image(systemName: "link")
+                                Text("Open Link")
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemBackground))
+                .cornerRadius(12)
+                
+                // Details Card
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Details")
+                        .font(.headline)
+                    
+                    StatRow(label: "Assigned To", value: territory.assignedToDisplayName, icon: "person")
+                    StatRow(label: "Last Worked", value: territory.formattedLastTimeWorked, icon: "clock")
+                    
+                    if let total = territory.totalCount {
+                        StatRow(label: "Total Parts", value: "\(total)", icon: "square.stack.3d.up")
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemBackground))
+                .cornerRadius(12)
+                
+                // Actions Card
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Actions")
+                        .font(.headline)
+                    
+                    if territory.assignedToName == nil && territory.assignedUnregisteredUser == nil {
+                        Button {
+                            showAssignSheet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.badge.plus")
+                                    .font(.title3)
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 28)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Assign to User")
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                    Text("Assign this territory to a registered user")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if isProcessing {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .disabled(isProcessing)
+                        .buttonStyle(PlainButtonStyle())
+                    } else {
+                        Button {
+                            showWithdrawConfirmation = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.badge.minus")
+                                    .font(.title3)
+                                    .foregroundStyle(.red)
+                                    .frame(width: 28)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Withdraw from User")
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.red)
+                                    Text("Remove the current user assignment")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if isProcessing {
+                                    ProgressView()
+                                }
+                            }
+                        }
+                        .disabled(isProcessing)
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemBackground))
+                .cornerRadius(12)
+                
+                // Parts List
+                if let parts = territory.toParts, !parts.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Parts (\(parts.count))")
+                            .font(.headline)
+                        
+                        ForEach(parts) { part in
+                            HStack {
+                                Circle()
+                                    .fill(part.isBoundaries == true ? Color.red.opacity(0.7) : Color.blue.opacity(0.7))
+                                    .frame(width: 8, height: 8)
+                                
+                                Text(part.name ?? "Part \(part.id)")
+                                    .font(.subheadline)
+                                
+                                Spacer()
+                                
+                                if let count = part.count {
+                                    Text("\(count)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(Color(uiColor: .tertiarySystemBackground))
+                                        .cornerRadius(4)
+                                }
+                                
+                                if part.isBoundaries == true {
+                                    Text("Boundary")
+                                        .font(.caption2)
+                                        .foregroundStyle(.red)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.red.opacity(0.1))
+                                        .cornerRadius(4)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                            
+                            if part.id != parts.last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(uiColor: .secondarySystemBackground))
+                    .cornerRadius(12)
+                }
+            }
+            .padding()
+        }
+    }
+    
+    // MARK: - Helpers
+    
+    private func polygonCenter(_ coords: [CLLocationCoordinate2D]) -> CLLocationCoordinate2D {
+        let latSum = coords.reduce(0.0) { $0 + $1.latitude }
+        let lonSum = coords.reduce(0.0) { $0 + $1.longitude }
+        let count = Double(coords.count)
+        return CLLocationCoordinate2D(latitude: latSum / count, longitude: lonSum / count)
+    }
+    
+    // MARK: - Map Tab
+    
+    private func mapTab(territory: TerritoryDetail) -> some View {
+        let boundaryCoords = parseCoordinateString(territory.toBoundaryPart?.coordinates)
+        let partPolygons: [(id: String, name: String?, coords: [CLLocationCoordinate2D], isBoundary: Bool)] = (territory.toParts ?? []).compactMap { part in
+            guard let coords = parseCoordinateString(part.coordinates), !coords.isEmpty else { return nil }
+            return (id: part.id, name: part.name, coords: coords, isBoundary: part.isBoundaries == true)
+        }
+        
+        let allCoords = (boundaryCoords ?? []) + partPolygons.flatMap { $0.coords }
+        
+        if allCoords.isEmpty {
+            return AnyView(
+                ContentUnavailableView(
+                    "No Map Data",
+                    systemImage: "map",
+                    description: Text("No coordinates available for this territory.")
+                )
+            )
+        }
+        
+        let region = calculateMapRegion(for: allCoords)
+        
+        return AnyView(
+            Map(initialPosition: .region(region)) {
+                // Boundary polygon
+                if let coords = boundaryCoords, !coords.isEmpty {
+                    MapPolygon(coordinates: coords)
+                        .foregroundStyle(.red.opacity(0.1))
+                        .stroke(.red, lineWidth: 2)
+                }
+                
+                // Part polygons
+                ForEach(partPolygons, id: \.id) { part in
+                    MapPolygon(coordinates: part.coords)
+                        .foregroundStyle(part.isBoundary ? .red.opacity(0.15) : .blue.opacity(0.2))
+                        .stroke(part.isBoundary ? .red : .blue, lineWidth: 1.5)
+                    
+                    if let name = part.name {
+                        let center = polygonCenter(part.coords)
+                        Annotation("", coordinate: center) {
+                            Text(name)
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+            }
+            .mapStyle(.standard)
+        )
     }
 }
 
