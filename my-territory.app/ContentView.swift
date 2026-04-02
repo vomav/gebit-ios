@@ -136,7 +136,7 @@ struct WorkerDetail: Codable, Identifiable {
         if let surname = surname, !surname.isEmpty {
             return surname
         }
-        return username ?? "Unknown"
+        return username ?? String(localized: "Unknown")
     }
     
     enum CodingKeys: String, CodingKey {
@@ -155,7 +155,7 @@ struct AllowedUser: Codable, Identifiable {
     
     var displayName: String {
         let parts = [name, surname].compactMap { $0 }.filter { !$0.isEmpty }
-        return parts.isEmpty ? "Unknown User" : parts.joined(separator: " ")
+        return parts.isEmpty ? String(localized: "Unknown User") : parts.joined(separator: " ")
     }
     
     enum CodingKeys: String, CodingKey {
@@ -309,17 +309,17 @@ enum AuthError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid server URL"
+            return String(localized: "Invalid server URL")
         case .invalidResponse:
-            return "Invalid response from server"
+            return String(localized: "Invalid response from server")
         case .loginFailed(let statusCode):
             if statusCode == 401 {
-                return "Invalid login or password"
+                return String(localized: "Invalid login or password")
             } else {
-                return "Login failed with status code: \(statusCode)"
+                return String(localized: "Login failed with status code: \(statusCode)")
             }
         case .decodingError:
-            return "Failed to process server response"
+            return String(localized: "Failed to process server response")
         }
     }
 }
@@ -521,13 +521,13 @@ enum ODataError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid OData URL"
+            return String(localized: "Invalid OData URL")
         case .invalidResponse:
-            return "Invalid response from OData service"
+            return String(localized: "Invalid response from OData service")
         case .unauthorized:
-            return "Not authenticated. Please log in again."
+            return String(localized: "Not authenticated. Please log in again.")
         case .requestFailed(let statusCode):
-            return "OData request failed with status code: \(statusCode)"
+            return String(localized: "OData request failed with status code: \(statusCode)")
         }
     }
 }
@@ -1353,7 +1353,7 @@ struct Territory: Codable, Identifiable {
     
     var formattedLastTimeWorked: String {
         guard let dateString = lastTimeWorked, !dateString.isEmpty else {
-            return "Never"
+            return String(localized: "Never")
         }
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -1387,7 +1387,7 @@ struct Territory: Codable, Identifiable {
         if let unregistered = assignedUnregisteredUser, !unregistered.isEmpty {
             return unregistered
         }
-        return "Unassigned"
+        return String(localized: "Unassigned")
     }
 }
 
@@ -1431,12 +1431,12 @@ struct TerritoryDetail: Codable, Identifiable {
         if let unregistered = assignedUnregisteredUser, !unregistered.isEmpty {
             return unregistered
         }
-        return "Unassigned"
+        return String(localized: "Unassigned")
     }
     
     var formattedLastTimeWorked: String {
         guard let dateString = lastTimeWorked, !dateString.isEmpty else {
-            return "Never"
+            return String(localized: "Never")
         }
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -1612,6 +1612,14 @@ enum TerritoryAssignmentFilter: String, CaseIterable {
     case all = "All"
     case assigned = "Assigned"
     case available = "Available"
+    
+    var localizedName: String {
+        switch self {
+        case .all: return String(localized: "All")
+        case .assigned: return String(localized: "Assigned")
+        case .available: return String(localized: "Available")
+        }
+    }
 }
 
 @MainActor
@@ -1747,7 +1755,7 @@ struct ManageTerritoriesView: View {
                         NavigationLink(destination: TerritoryManageDetailView(territory: territory, authManager: authManager)) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(territory.name ?? "Unnamed")
+                                    Text(territory.name ?? String(localized: "Unnamed"))
                                         .font(.body)
                                         .fontWeight(.medium)
                                     Text(territory.assignedToDisplayName)
@@ -1815,7 +1823,7 @@ struct ManageTerritoriesView: View {
                 Menu {
                     Picker("Filter", selection: $assignmentFilter) {
                         ForEach(TerritoryAssignmentFilter.allCases, id: \.self) { filter in
-                            Text(filter.rawValue).tag(filter)
+                            Text(filter.localizedName).tag(filter)
                         }
                     }
                 } label: {
@@ -1924,7 +1932,7 @@ struct TerritoryManageDetailView: View {
                 )
             }
         }
-        .navigationTitle(detailManager.territory?.name ?? "Territory")
+        .navigationTitle(detailManager.territory?.name ?? String(localized: "Territory"))
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await detailManager.refresh(id: territoryId)
@@ -2024,7 +2032,7 @@ struct TerritoryManageDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 // Header Card
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(territory.name ?? "Unnamed")
+                    Text(territory.name ?? String(localized: "Unnamed"))
                         .font(.title)
                         .fontWeight(.bold)
                     
@@ -2378,7 +2386,7 @@ struct TerritoriesView: View {
                 .listStyle(.plain)
             }
         }
-        .navigationTitle(isGroupMode ? "Group Territories" : "My Territories")
+        .navigationTitle(isGroupMode ? String(localized: "Group Territories") : String(localized: "My Territories"))
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             if isGroupMode {
@@ -3950,7 +3958,7 @@ struct PartAssignmentDetailView: View {
                                 } else {
                                     Image(systemName: "square.and.arrow.up")
                                 }
-                                Text(isUploading ? "Uploading..." : "Upload")
+                                Text(isUploading ? String(localized: "Uploading...") : String(localized: "Upload"))
                             }
                             .font(.subheadline)
                         }
