@@ -4,6 +4,7 @@ import MapKit
 struct PartAssignmentMapPreview: View {
     let partCoordinates: String?
     let boundaryCoordinates: String?
+    var showsUserLocation: Bool = false
     
     var body: some View {
         let partCoords = parseCoordinateString(partCoordinates)
@@ -24,6 +25,10 @@ struct PartAssignmentMapPreview: View {
                     MapPolygon(coordinates: coords)
                         .foregroundStyle(.red.opacity(0.15))
                         .stroke(.red, lineWidth: 1.5)
+                }
+                
+                if showsUserLocation {
+                    UserAnnotation()
                 }
             }
             .mapStyle(.standard)

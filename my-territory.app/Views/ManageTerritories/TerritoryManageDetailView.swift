@@ -6,6 +6,7 @@ struct TerritoryManageDetailView: View {
     let territoryId: String
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var detailManager: TerritoryManageDetailManager
+    @StateObject private var locationManager = LocationManager()
     @State private var selectedTab = 0
     @State private var showAssignSheet = false
     @State private var showWithdrawConfirmation = false
@@ -85,6 +86,7 @@ struct TerritoryManageDetailView: View {
             await detailManager.refresh(id: territoryId)
         }
         .task {
+            locationManager.requestWhenInUseAuthorization()
             await detailManager.loadTerritory(id: territoryId)
         }
         .sheet(isPresented: $showAssignSheet) {
@@ -385,8 +387,15 @@ struct TerritoryManageDetailView: View {
                         }
                     }
                 }
+                
+                UserAnnotation()
             }
             .mapStyle(.standard)
+            .mapControls {
+                MapUserLocationButton()
+                MapCompass()
+                MapScaleView()
+            }
         }
     }
 }

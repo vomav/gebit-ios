@@ -10,6 +10,7 @@ struct TerritoryAssignmentDetailView: View {
     let navigationTitle: String
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var detailManager: TerritoryAssignmentDetailManager
+    @StateObject private var locationManager = LocationManager()
     @State private var selectedType: String
     @State private var isUpdatingType = false
     @State private var showScreenshotModal = false
@@ -133,7 +134,8 @@ struct TerritoryAssignmentDetailView: View {
                                     // Map preview
                                     PartAssignmentMapPreview(
                                         partCoordinates: part.coordinates,
-                                        boundaryCoordinates: part.toBoundaryPart?.coordinates
+                                        boundaryCoordinates: part.toBoundaryPart?.coordinates,
+                                        showsUserLocation: true
                                     )
                                     .frame(height: 140)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -206,6 +208,7 @@ struct TerritoryAssignmentDetailView: View {
             await detailManager.loadAssignment(id: assignmentId)
         }
         .task {
+            locationManager.requestWhenInUseAuthorization()
             await detailManager.loadAssignment(id: assignmentId)
             if let type = detailManager.assignment?.type {
                 selectedType = type
